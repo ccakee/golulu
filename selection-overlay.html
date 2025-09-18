@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Selection Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            overflow: hidden;
+            position: relative;
+            pointer-events: none;
+        }
+        
+        #selection-area {
+            position: absolute;
+            border: 2px dashed #00ff00;
+            background-color: transparent;
+        }
+        
+    </style>
+</head>
+<body>
+    <div id="selection-area"></div>
+    
+    <script>
+        const selectionArea = document.getElementById('selection-area');
+        
+        // 设置选区
+        window.setSelectionArea = (bounds) => {
+            selectionArea.style.left = bounds.x + 'px';
+            selectionArea.style.top = bounds.y + 'px';
+            selectionArea.style.width = bounds.width + 'px';
+            selectionArea.style.height = bounds.height + 'px';
+        };
+    </script>
+</body>
+</html>

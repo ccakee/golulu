@@ -1,0 +1,59 @@
+{
+  "name": "golulu",
+  "productName": "狗录录",
+  "version": "0.0.1",
+  "description": "一个录屏软件",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac"
+  },
+  "keywords": [
+    "electron"
+  ],
+  "author": "sz",
+  "license": "MIT",
+  "build": {
+    "appId": "com.example.golulu",
+    "productName": "golulu",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "package.json",
+      "win_icon.png",
+      "icon.png",
+      "*.html"
+    ],
+    "extraResources": [
+      {
+        "from": "ff/",
+        "to": "app.asar.unpacked/ff/",
+        "filter": ["**/*"]
+      }
+    ],
+    "asarUnpack": [
+      "ff/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "win_icon.png"
+    },
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": "dmg",
+      "icon": "win_icon.png"
+    }
+  },
+  "devDependencies": {
+    "electron": "^25.0.0",
+    "electron-builder": "^24.0.0"
+  },
+  "dependencies": {
+    "fluent-ffmpeg": "^2.1.2"
+  }
+}

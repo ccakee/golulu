@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title></title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #selectBtn {
+            background-color: #2196F3;
+            color: white;
+        }
+        #selectBtn:hover {
+            background-color: #0b7dda;
+        }
+        #recordBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #recordBtn.recording {
+            background-color: #f44336;
+        }
+        #recordBtn:hover:not(.recording) {
+            background-color: #45a049;
+        }
+        #recordBtn:hover.recording {
+            background-color: #da190b;
+        }
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 4px;
+        }
+        .recording {
+            background-color: #ffebee;
+            color: #c62828;
+        }
+        .info {
+            background-color: #e3f2fd;
+            color: #1565c0;
+        }
+        .selection-info {
+            background-color: #f1f8e9;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+            border-left: 4px solid #4CAF50;
+        }
+        
+        .recording-area-hint {
+            background-color: #e8f5e8;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            border: 1px solid #4CAF50;
+        }
+        
+        .recording-area-hint p {
+            margin: 5px 0;
+        }
+        .instructions {
+            background-color: #fff8e1;
+            color: #ff8f00;
+            padding: 15px;
+            border-radius: 4px;
+            margin-top: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>FFmpeg 屏幕录制工具</h1>
+        
+        <div class="controls">
+            <button id="selectBtn">选择录制区域</button>
+            <button id="recordBtn">开始录制 (F2)</button>
+        </div>
+        
+        <div id="status" class="status info">
+            请先选择要录制的屏幕区域
+        </div>
+        
+        <div id="selectionInfo" class="selection-info hidden">
+            <h3>已选择录制区域:</h3>
+            <p>位置: <span id="position">-</span></p>
+            <p>尺寸: <span id="size">-</span></p>
+            <div class="recording-area-hint">
+                <p><strong>录制区域已确定</strong></p>
+                <p>请确保您要录制的内容在选定区域内</p>
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>使用说明:</h3>
+            <ul>
+                <li><strong>第一次按 F2</strong>：选择录制区域（在屏幕上拖拽选择）</li>
+                <li><strong>第二次按 F2</strong>：开始录制</li>
+                <li><strong>第三次按 F2</strong>：停止录制并保存文件</li>
+                <li>录制期间您可以操作选区外的区域</li>
+                <li>使用 FFmpeg 进行录制，更加稳定高效</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const { ipcRenderer, shell } = require('electron');
+        
+        const selectBtn = document.getElementById('selectBtn');
+        const recordBtn = document.getElementById('recordBtn');
+        const statusEl = document.getElementById('status');
+        const selectionInfo = document.getElementById('selectionInfo');
+        const positionEl = document.getElementById('position');
+        const sizeEl = document.getElementById('size');
+        
+        let selectedBounds = null;
+        let isRecording = false;
+        
+        selectBtn.addEventListener('click', () => {
+            ipcRenderer.send('start-overlay');
+            statusEl.textContent = '请在屏幕上拖拽选择录制区域';
+            statusEl.className = 'status info';
+        });
+        
+        recordBtn.addEventListener('click', () => {
+            if (isRecording) {
+                ipcRenderer.send('stop-recording');
+            } else {
+                if (selectedBounds) {
+                    ipcRenderer.send('start-recording');
+                } else {
+                    statusEl.textContent = '请先选择录制区域';
+                    statusEl.className = 'status info';
+                }
+            }
+        });
+        
+        // 接收F2按键事件
+        ipcRenderer.on('f2-pressed', () => {
+            // 如果正在录制，按F2停止录制
+            if (isRecording) {
+                ipcRenderer.send('stop-recording');
+            }
+            // 如果没有选区，按F2进行区域选择
+            else if (!selectedBounds) {
+                ipcRenderer.send('start-overlay');
+                statusEl.textContent = '请在屏幕上拖拽选择录制区域';
+                statusEl.className = 'status info';
+            }
+            // 如果有选区且未在录制，按F2开始录制
+            else if (selectedBounds && !isRecording) {
+                ipcRenderer.send('start-recording');
+            }
+        });
+        
+        // 接收选区完成事件
+        ipcRenderer.on('selection-made', (event, bounds) => {
+            selectedBounds = bounds;
+            positionEl.textContent = `${bounds.x}, ${bounds.y}`;
+            sizeEl.textContent = `${bounds.width} × ${bounds.height}`;
+            selectionInfo.classList.remove('hidden');
+            statusEl.innerHTML = '已选择录制区域<br><strong style="color: #4CAF50; font-size: 18px;">按 F2 键开始录制</strong>';
+            statusEl.className = 'status info';
+        });
+        
+        // 接收选区取消事件
+        ipcRenderer.on('selection-canceled', () => {
+            selectedBounds = null;
+            selectionInfo.classList.add('hidden');
+            statusEl.textContent = '已取消选择录制区域';
+            statusEl.className = 'status info';
+        });
+        
+        // 接收录制开始事件
+        ipcRenderer.on('recording-started', () => {
+            isRecording = true;
+            recordBtn.textContent = '停止录制 (F2)';
+            recordBtn.classList.add('recording');
+            statusEl.innerHTML = '<strong style="font-size: 18px;">🔴 正在录制中...</strong><br>按 F2 键停止录制';
+            statusEl.className = 'status recording';
+        });
+        
+        // 接收录制保存事件
+        ipcRenderer.on('recording-saved', (event, filePath) => {
+            isRecording = false;
+            recordBtn.textContent = '开始录制 (F2)';
+            recordBtn.classList.remove('recording');
+            // 清空选区信息，下次F2重新开始选择
+            selectedBounds = null;
+            selectionInfo.classList.add('hidden');
+            statusEl.textContent = `录制已完成，文件已保存到: ${filePath}。按 F2 键重新选择录制区域`;
+            statusEl.className = 'status info';
+        });
+        
+        // 接收录制取消事件
+        ipcRenderer.on('recording-canceled', () => {
+            isRecording = false;
+            recordBtn.textContent = '开始录制 (F2)';
+            recordBtn.classList.remove('recording');
+            // 清空选区信息，下次F2重新开始选择
+            selectedBounds = null;
+            selectionInfo.classList.add('hidden');
+            statusEl.textContent = '录制已取消。按 F2 键重新选择录制区域';
+            statusEl.className = 'status info';
+        });
+        
+        // 接收录制错误事件
+        ipcRenderer.on('recording-error', (event, error) => {
+            isRecording = false;
+            recordBtn.textContent = '开始录制 (F2)';
+            recordBtn.classList.remove('recording');
+            // 清空选区信息，下次F2重新开始选择
+            selectedBounds = null;
+            selectionInfo.classList.add('hidden');
+            statusEl.textContent = `录制出错: ${error}。按 F2 键重新选择录制区域`;
+            statusEl.className = 'status recording';
+        });
+        
+        // 接收录制停止事件
+        ipcRenderer.on('recording-stopped', () => {
+            isRecording = false;
+            recordBtn.textContent = '开始录制 (F2)';
+            recordBtn.classList.remove('recording');
+            // 保持选区信息，不清空selectedBounds
+            statusEl.textContent = '录制已停止。按 F2 键重新选择区域或开始新录制';
+            statusEl.className = 'status info';
+        });
+        
+
+    </script>
+</body>
+</html>

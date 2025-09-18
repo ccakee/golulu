@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            cursor: crosshair;
+            overflow: hidden;
+            outline: none;
+        }
+        
+        #selection {
+            position: absolute;
+            border: 2px dashed #00ff00;
+            background-color: rgba(0, 255, 0, 0.2);
+            display: none;
+        }
+    </style>
+</head>
+<body tabindex="0">
+    <div id="selection"></div>
+    
+    <script>
+        const selection = document.getElementById('selection');
+        let isSelecting = false;
+        let startX, startY, endX, endY;
+        let selectionRect = { x: 0, y: 0, width: 0, height: 0 };
+        
+        // 确保窗口获得焦点
+        window.addEventListener('load', () => {
+            window.focus();
+            document.body.focus();
+        });
+        
+        // 添加全局焦点获取
+        setTimeout(() => {
+            window.focus();
+            document.body.focus();
+        }, 100);
+        
+        document.addEventListener('mousedown', (e) => {
+            if (e.button === 0) { // 左键
+                isSelecting = true;
+                startX = e.clientX;
+                startY = e.clientY;
+                selection.style.display = 'block';
+                selection.style.left = startX + 'px';
+                selection.style.top = startY + 'px';
+                selection.style.width = '0px';
+                selection.style.height = '0px';
+            }
+        });
+        
+        document.addEventListener('mousemove', (e) => {
+            if (isSelecting) {
+                endX = e.clientX;
+                endY = e.clientY;
+                
+                const left = Math.min(startX, endX);
+                const top = Math.min(startY, endY);
+                const width = Math.abs(endX - startX);
+                const height = Math.abs(endY - startY);
+                
+                selection.style.left = left + 'px';
+                selection.style.top = top + 'px';
+                selection.style.width = width + 'px';
+                selection.style.height = height + 'px';
+                
+                // 更新选区信息
+                selectionRect = { 
+                    x: left, 
+                    y: top, 
+                    width: width, 
+                    height: height 
+                };
+            }
+        });
+        
+        document.addEventListener('mouseup', (e) => {
+            if (isSelecting && e.button === 0) {
+                isSelecting = false;
+                
+                // 确保选区有最小尺寸
+                if (selectionRect.width > 10 && selectionRect.height > 10) {
+                    // 通知主进程选区完成
+                    const { ipcRenderer } = require('electron');
+                    ipcRenderer.send('selection-complete', selectionRect);
+                } else {
+                    // 选区太小，重置
+                    selection.style.display = 'none';
+                }
+            }
+        });
+        
+        // 添加ESC键取消功能
+        document.addEventListener('keydown', (e) => {
+            console.log('Key pressed:', e.key); // 调试信息
+            if (e.key === 'Escape') {
+                console.log('Escape key pressed'); // 调试信息
+                // 通知主进程取消选择
+                const { ipcRenderer } = require('electron');
+                ipcRenderer.send('cancel-selection');
+                e.preventDefault();
+                e.stopPropagation();
+                return false;
+            }
+        });
+        
+        // 捕获所有键盘事件
+        document.addEventListener('keyup', (e) => {
+            console.log('Key up:', e.key); // 调试信息
+        });
+        
+        // 提供获取选区的方法
+        window.getSelectionRect = () => {
+            return selectionRect;
+        };
+    </script>
+</body>
+</html>

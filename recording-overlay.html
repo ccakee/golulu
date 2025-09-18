@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Recording Overlay</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: transparent;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #recording-area {
+            position: absolute;
+            background-color: transparent;
+            border: 2px dashed #00ff00;
+        }
+    </style>
+</head>
+<body>
+    <div id="recording-area"></div>
+    
+    <script>
+        const recordingArea = document.getElementById('recording-area');
+        
+        // 设置录制区域
+        window.setRecordingArea = (bounds) => {
+            recordingArea.style.left = bounds.x + 'px';
+            recordingArea.style.top = bounds.y + 'px';
+            recordingArea.style.width = bounds.width + 'px';
+            recordingArea.style.height = bounds.height + 'px';
+        };
+    </script>
+</body>
+</html>
